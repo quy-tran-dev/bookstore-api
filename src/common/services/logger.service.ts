@@ -12,6 +12,13 @@ export class LoggerService {
 
     await this.discordService.sendLog('INFO', 'Request', message);
   }
+
+  logInfo(feature: string, mess: string) {
+    const message = `Info on ${feature}:\n${mess}`;
+    this.logger.log(message);
+    // await this.discordService.sendLog('INFO', feature, message);
+  }
+
   async logDebug(feature: string, mess: string, data: any) {
     const message = `Debug on ${feature}:\n${mess}`;
     this.logger.debug(message);

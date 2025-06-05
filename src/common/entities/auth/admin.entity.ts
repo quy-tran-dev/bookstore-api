@@ -4,21 +4,21 @@ import { BaseEntity } from '../base.entity';
 @Entity('admin') 
 export class Admin extends BaseEntity {
 
-  @Column({ unique: true, nullable: false })
+  @Column({name: 'name_admin',  nullable: false })
   nameAdmin: string;
 
-  @Column({ unique: true, nullable: false }) 
+  @Column({name: 'account', unique: true, nullable: false }) 
   account: string;
 
-  @Column({ nullable: false }) 
+  @Column({ name: 'password',nullable: false }) 
   password: string;
 
-  @Column({ default: false })
+  @Column({name: 'is_login', default: false })
   isLogin: boolean;
 
-  @Column({ nullable: false }) 
+  @Column({name: 'power', nullable: false }) 
   power: string;
 
-  @Column({ default: false })
+  @Column({ name: 'cancel_role',default: false })
   cancelRole: boolean;
 }

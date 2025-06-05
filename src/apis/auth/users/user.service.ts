@@ -122,4 +122,6 @@ export class UserService extends BaseService<User> {
     }
     return this.userDetailRepository.save(userDetail);
   }
+
+  
 }
