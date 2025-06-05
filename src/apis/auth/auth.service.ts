@@ -14,6 +14,8 @@ import { UserService } from './users/user.service';
 import { AdminService } from './admin/admin.service';
 import { User } from '@app/common/entities/auth/user.entity';
 import { Admin } from '@app/common/entities/auth/admin.entity';
+import { log } from 'console';
+import { LoggerService } from '@app/common/services/logger.service';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +23,8 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly adminService: AdminService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService, // Tiêm ConfigService
+    private readonly configService: ConfigService,
+    private readonly loggerService: LoggerService,
   ) {}
 
   /**
@@ -41,7 +44,6 @@ export class AuthService {
       throw new BadRequestException('Email đã được đăng ký.');
     }
 
-    // Băm mật khẩu
     const hashedPassword = await bcrypt.hash(passwordUser, 10);
 
     // Tạo verification token
@@ -83,11 +85,18 @@ export class AuthService {
     loginDto: LoginDto,
   ): Promise<{ user: User; accessToken: string }> {
     const user = await this.userService.findByEmail(loginDto.emailUser);
-
-    if (
-      !user ||
-      !(await bcrypt.compare(loginDto.passwordUser, user.passwordUser))
-    ) {
+    const checkPassword = await bcrypt.compare(
+      loginDto.passwordUser,
+      user!.passwordUser,
+    );
+    this.loggerService.logDebug('login', 'loginDto', loginDto);
+    this.loggerService.logDebug(
+      'login',
+      'hashedPassword from DB',
+      user!.passwordUser,
+    ); 
+    this.loggerService.logDebug('login', 'compare result', checkPassword);
+    if (!user || !checkPassword) {
       throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ.');
     }
 

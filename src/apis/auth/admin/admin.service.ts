@@ -72,6 +72,6 @@ export class AdminService extends BaseService<Admin> {
    * @returns Đối tượng Admin hoặc null nếu không tìm thấy.
    */
   async findByAccount(account: string): Promise<Admin | null> {
-    return this.adminRepository.findOne({ where: { account } });
+    return this.adminRepository.findOne({ where: { account:account } });
   }
 }

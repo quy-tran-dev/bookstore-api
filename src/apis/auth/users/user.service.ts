@@ -41,12 +41,10 @@ export class UserService extends BaseService<User> {
       throw new BadRequestException('Email đã được đăng ký.');
     }
 
-    // Băm mật khẩu
-    const hashedPassword = await bcrypt.hash(passwordUser, 10); // Salt rounds = 10
 
     const newUser = this.userRepository.create({
       ...userData,
-      passwordUser: hashedPassword,
+      passwordUser: passwordUser,
       isVerified: false, // Mặc định chưa xác minh
       // verificationToken sẽ được tạo trong AuthService khi đăng ký
     });

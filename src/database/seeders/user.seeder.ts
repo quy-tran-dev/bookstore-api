@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { Seeder } from './seeder.interface';
 import { v4 as uuidv4 } from 'uuid'; 
 import { User } from '@app/common/entities/auth/user.entity';

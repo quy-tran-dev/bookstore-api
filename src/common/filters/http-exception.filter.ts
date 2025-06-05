@@ -56,7 +56,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Gửi phản hồi tùy chỉnh
     res.status(status).json({
       statusCode: status,
-      timestamp: new Date().toISOString(), // <--- Sẽ xuất hiện bây giờ
+      timestamp: new Date().toISOString(), 
       message: message,
       data: errorData || null,
     });

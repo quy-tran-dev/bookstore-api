@@ -1,6 +1,6 @@
 // src/database/seeds/admin.seeder.ts
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { Seeder } from './seeder.interface';
 import { Admin } from '@app/common/entities/auth/admin.entity';
 

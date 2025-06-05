@@ -12,6 +12,13 @@ export class LoggerService {
 
     await this.discordService.sendLog('INFO', 'Request', message);
   }
+  async logDebug(feature: string, mess: string, data: any) {
+    const message = `Debug on ${feature}:\n${mess}`;
+    this.logger.debug(message);
+    this.logger.debug(JSON.stringify(data));
+    // await this.discordService.sendLog('WARN', feature, message);
+  }
+
   async logError(req: ExpressRequest, mess: string, errString: string) {
     const message = `Error on ${req.method} ${req.url}:\n${mess}`;
     this.logger.error(message);

@@ -13,31 +13,39 @@ import { JwtStrategy } from './stategies/jwt.stategy';
 import { AuthController } from './auth.controller';
 import { Admin } from '@app/common/entities/auth/admin.entity';
 import { DiscordLogService } from '@app/modules/discord-notify/log-discord.service';
-
+import { LoggerService } from '@app/common/services/logger.service';
 
 @Module({
   imports: [
-    ConfigModule, // Đảm bảo ConfigModule được import để sử dụng ConfigService
-    TypeOrmModule.forFeature([User, Admin, UserDetail]), // Đăng ký các Entities
-    PassportModule.register({ defaultStrategy: 'jwt' }), // Cấu hình Passport sử dụng JWT mặc định
+    ConfigModule,
+    TypeOrmModule.forFeature([User, Admin, UserDetail]),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
-      imports: [ConfigModule], // Import ConfigModule vào đây để JwtModule có thể sử dụng ConfigService
+      imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'), // Lấy JWT_SECRET từ biến môi trường
-        signOptions: { expiresIn: '1h' }, // Thời gian hết hạn mặc định cho token
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1h' },
       }),
-      inject: [ConfigService], // Tiêm ConfigService vào useFactory
+      inject: [ConfigService],
     }),
   ],
   providers: [
     AuthService,
     UserService,
     AdminService,
-    UserDetailService, 
+    UserDetailService,
     JwtStrategy,
-    DiscordLogService
+    DiscordLogService,
+    LoggerService,
   ],
- controllers: [AuthController],
-  exports: [AuthService, JwtModule, PassportModule, UserService, AdminService, UserDetailService], // Export các service và module cần thiết cho các module khác
+  controllers: [AuthController],
+  exports: [
+    AuthService,
+    JwtModule,
+    PassportModule,
+    UserService,
+    AdminService,
+    UserDetailService,
+  ],
 })
 export class AuthModule {}
