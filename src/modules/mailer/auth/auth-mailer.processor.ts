@@ -34,26 +34,19 @@ export class AuthMailProcessor {
     }
   }
 
-
-
-
   @OnQueueActive()
   onActive(job: Job) {
-    this.loggerService.logDebug('Send mail', `[Job ${job.id}] Active`, '');
+    console.log('Send mail', `[Job ${job.id}] Active`, '');
   }
 
   @OnQueueCompleted()
   onCompleted(job: Job, result: any) {
-    this.loggerService.logDebug(
-      'Send mail',
-      `[Job ${job.id}] Completed.`,
-      result,
-    );
+    console.log('Send mail', `[Job ${job.id}] Completed.`, result);
   }
 
   @OnQueueFailed()
   onFailed(job: Job, error: Error) {
-    this.loggerService.logDebug(
+    console.log(
       'Error send mail',
       `[Job ${job.id}] Failed. Error: ${error.message}`,
       error.stack,

@@ -6,8 +6,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { typeOrmConfig } from './common/configs/typeorm.config';
 import { ApiModule } from './apis/api.module';
-import { AppService } from './app.service';
-import { QueueModule } from './modules/queue/queue.module';
+import { MailModule } from './modules/mailer/mailer.module';
+import { BullModule } from '@nestjs/bull';
+import { BullConfigService } from './common/configs/bull.config';
 
 @Module({
   imports: [
@@ -25,8 +26,11 @@ import { QueueModule } from './modules/queue/queue.module';
         limit: 10,
       },
     ]),
+    BullModule.forRootAsync({
+      useClass: BullConfigService,
+    }),
     ApiModule,
-    QueueModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers,

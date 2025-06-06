@@ -6,7 +6,7 @@ import { ApiProperty } from '@nestjs/swagger';
 @Entity('users')
 export class User extends BaseEntity {
   @ApiProperty({ description: 'Tên người dùng', example: 'Đông' })
-  @Column({ nullable: false })
+  @Column({ name: 'name_user', nullable: false })
   nameUser: string;
 
   @ApiProperty({

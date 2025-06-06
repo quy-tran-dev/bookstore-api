@@ -6,9 +6,13 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import * as path from 'path';
 import { LoggerService } from '@app/common/services/logger.service';
 import { AuthMailModule } from './auth/auth-mailer.module';
+import { BullModule } from '@nestjs/bull';
+import { BullConfigService } from '@app/common/configs/bull.config';
+import { DiscordLogService } from '../discord-notify/log-discord.service';
 
 @Module({
   imports: [
+    
     BaseMailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -40,7 +44,7 @@ import { AuthMailModule } from './auth/auth-mailer.module';
     }),
     AuthMailModule,
   ],
-  providers: [MailerService, LoggerService],
+  providers: [MailerService, LoggerService, DiscordLogService],
   exports: [MailerService],
 })
 export class MailModule {}

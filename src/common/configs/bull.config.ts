@@ -1,28 +1,24 @@
-import {
-  BullModuleOptions,
-  SharedBullConfigurationFactory,
-} from '@nestjs/bull';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SharedBullConfigurationFactory, BullRootModuleOptions } from '@nestjs/bull'; 
+
 
 @Injectable()
 export class BullConfigService implements SharedBullConfigurationFactory {
   constructor(private configService: ConfigService) {}
-  createSharedConfiguration(): BullModuleOptions {
+
+  createSharedConfiguration(): BullRootModuleOptions { 
     return {
       redis: {
         host: this.configService.get<string>('REDIS_HOST') || 'localhost',
-        port: parseInt(this.configService.get<string>('REDIS_PORT') || '6379'),
-        db: parseInt(this.configService.get<string>('REDIS_DB') || '0'),
-        password: this.configService.get<string>('REDIS_PASSWORD') || undefined,
+        port: this.configService.get<number>('REDIS_PORT') || 6379,
+        password: this.configService.get<string>('REDIS_PASSWORD') || '',
+        db: this.configService.get<number>('REDIS_DB') || 0, // Đảm bảo có db
+        // Thêm các tùy chọn khác nếu cần
       },
-      //   prefix: this.configService.get<string>('REDIS_HOST') || 'book_store_queue',
+      // Các tùy chọn khác của Bull (nếu có)
       defaultJobOptions: {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
       },
       // limiter: {
       //   max: 1000, // Số job tối đa mỗi giây

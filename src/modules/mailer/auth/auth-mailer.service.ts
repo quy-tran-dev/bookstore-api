@@ -6,22 +6,27 @@ import { NormalMail } from './interfaces/normal-mail.interface';
 
 @Injectable()
 export class AuthMailerService {
+  private current_year: number;
+  private website_link: string;
+  private contact_link: string;
+  private privacy_policy_link: string;
   constructor(
     private readonly mailerService: BaseMailerService,
     private readonly configService: ConfigService,
     private loggerService: LoggerService,
-  ) {}
-
-  private current_year = new Date().getFullYear();
-  private website_link = '';
-  private contact_link = '';
-  private privacy_policy_link = '';
+  ) {
+    this.current_year = new Date().getFullYear();
+    this.website_link = this.configService.get<string>('WEBSITE_LINK') ?? '';
+    this.contact_link = this.configService.get<string>('CONTACT_LINK') ?? '';
+    this.privacy_policy_link =
+      this.configService.get<string>('PRIVACY_POLICY_LINK') ?? '';
+  }
 
   async sendWelcomeEmail({ to, userName, verificationToken }: NormalMail) {
-    await this.mailerService.sendMail({
+    await this.sendMail({
       to,
       subject: 'Welcome to Bookstore!',
-      template: 'welcome',
+      template: 'welcome.template.hbs',
       context: {
         userName: userName,
         verifyLink: `${this.configService.get<string>('FRONTEND_URL')}/auth/verify-email/${verificationToken}`,
@@ -35,10 +40,10 @@ export class AuthMailerService {
     verificationToken,
   }: NormalMail) {
     const resetUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/reset-password/${verificationToken}`;
-    await this.mailerService.sendMail({
+    await this.sendMail({
       to,
       subject: 'Reset your password at Bookstore',
-      template: 'reset-password',
+      template: 'reset-password.template.hbs',
       context: {
         resetUrl: resetUrl,
       },
@@ -54,7 +59,7 @@ export class AuthMailerService {
     await this.sendMail({
       to: to,
       subject: 'Xác minh tài khoản của bạn',
-      template: 'resend-token',
+      template: 'resend-token.template.hbs',
       context: {
         userEmail: to,
         userName: userName,
@@ -79,7 +84,7 @@ export class AuthMailerService {
         }, // Dữ liệu sẽ được truyền vào template
       });
       this.loggerService.logInfo(
-        'Send mail',
+        'Send mail => SUCCESS',
         `Email sent to ${options.to} for template ${options.template}`,
       );
     } catch (error) {

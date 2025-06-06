@@ -14,6 +14,8 @@ import { AuthController } from './auth.controller';
 import { Admin } from '@app/common/entities/auth/admin.entity';
 import { DiscordLogService } from '@app/modules/discord-notify/log-discord.service';
 import { LoggerService } from '@app/common/services/logger.service';
+import { AuthMailProducer } from '@app/modules/mailer/auth/auth-mailer.producer';
+import { AuthMailModule } from '@app/modules/mailer/auth/auth-mailer.module';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { LoggerService } from '@app/common/services/logger.service';
       }),
       inject: [ConfigService],
     }),
+    AuthMailModule,
   ],
   providers: [
     AuthService,

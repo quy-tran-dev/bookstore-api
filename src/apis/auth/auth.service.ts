@@ -14,8 +14,9 @@ import { UserService } from './users/user.service';
 import { AdminService } from './admin/admin.service';
 import { User } from '@app/common/entities/auth/user.entity';
 import { Admin } from '@app/common/entities/auth/admin.entity';
-import { log } from 'console';
+
 import { LoggerService } from '@app/common/services/logger.service';
+import { AuthMailProducer } from '@app/modules/mailer/auth/auth-mailer.producer';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly loggerService: LoggerService,
+    private readonly authMailProducer: AuthMailProducer,
   ) {}
 
   /**
@@ -72,7 +74,31 @@ export class AuthService {
 
     // Lưu ý: Trong một ứng dụng thực tế, bạn sẽ gửi email xác minh tại đây
     // Ví dụ: await this.emailService.sendVerificationEmail(newUser.emailUser, verificationToken);
-
+    try {
+      this.authMailProducer.sendWelcomeEmail({
+        // <-- BỎ `await` ở đây
+        to: newUser.emailUser,
+        userName: newUser.nameUser,
+        verificationToken: verificationToken,
+      });
+      // Nếu bạn muốn log việc thêm job
+      this.loggerService.logDebug(
+        'AuthService',
+        `Email job for ${newUser.emailUser} added to queue.`,
+        'info',
+      );
+    } catch (e) {
+      this.loggerService.logDebug(
+        'AuthService',
+        `Failed to add email job to queue for ${newUser.emailUser}: ${e.message}`,
+        e.stack,
+      );
+      // Bạn có thể chọn cách xử lý ở đây:
+      // 1. Throw error (nhưng người dùng đã được tạo, vậy nên không lý tưởng).
+      // 2. Ghi log và tiếp tục (để người dùng vẫn nhận được phản hồi thành công, nhưng email có thể không gửi được).
+      // 3. Đánh dấu người dùng cần xác minh lại hoặc có cơ chế gửi lại email.
+      // Trong trường hợp này, chúng ta cứ ghi log và tiếp tục để không block request.
+    }
     return { user: newUser, accessToken };
   }
 
@@ -85,22 +111,20 @@ export class AuthService {
     loginDto: LoginDto,
   ): Promise<{ user: User; accessToken: string }> {
     const user = await this.userService.findByEmail(loginDto.emailUser);
-    const checkPassword = await bcrypt.compare(
-      loginDto.passwordUser,
-      user!.passwordUser,
-    );
-    this.loggerService.logDebug('login', 'loginDto', loginDto);
-    this.loggerService.logDebug(
-      'login',
-      'hashedPassword from DB',
-      user!.passwordUser,
-    ); 
-    this.loggerService.logDebug('login', 'compare result', checkPassword);
-    if (!user || !checkPassword) {
+
+    if (!user) {
       throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ.');
     }
 
-    // Kiểm tra nếu tài khoản chưa được xác minh (tùy chọn)
+    const checkPassword = await bcrypt.compare(
+      loginDto.passwordUser,
+      user.passwordUser,
+    );
+
+    if (!checkPassword) {
+      throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ.');
+    }
+
     if (!user.isVerified) {
       throw new UnauthorizedException(
         'Tài khoản của bạn chưa được xác minh. Vui lòng kiểm tra email.',
@@ -121,8 +145,12 @@ export class AuthService {
   ): Promise<{ admin: Admin; accessToken: string }> {
     const admin = await this.adminService.findByAccount(loginDto.emailUser); // Sử dụng emailUser làm account cho admin login
 
+    if (!admin) {
+      throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ.');
+    }
+
     if (
-      !admin ||
+      
       !(await bcrypt.compare(loginDto.passwordUser, admin.password))
     ) {
       throw new UnauthorizedException(
