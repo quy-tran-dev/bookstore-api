@@ -6,43 +6,36 @@ import {
   Processor,
 } from '@nestjs/bull';
 import { Job } from 'bull';
-import { MailerService } from '../mailer/mail.service';
-import { ConfigService } from '@nestjs/config';
-import { LoggerService } from '@app/common/services/logger.service';
 
-@Processor('mail')
-export class MailProcessor {
+import { LoggerService } from '@app/common/services/logger.service';
+import { AuthMailerService } from './auth-mailer.service';
+import { NormalMail } from './interfaces/normal-mail.interface';
+
+@Processor('authQueue')
+export class AuthMailProcessor {
   constructor(
-    private readonly mailerService: MailerService,
-    private readonly configService: ConfigService,
+    private readonly authMailerService: AuthMailerService,
     private loggerService: LoggerService,
   ) {}
 
-  @Process('sendVerification') // Xử lý job có tên 'sendVerification'
-  async handleSendVerification(
-    job: Job<{ to: string; userName: string; verificationToken: string }>,
-  ) {
-    this.loggerService.logDebug(
-      'Send mail',
-      `Processing verification email job ${job.id} for ${job.data.to}`,
-      '',
-    );
+  @Process('sendWelcomeEmail') // Xử lý job có tên 'sendWelcomeEmail'
+  async handleWelcomeEmail(job: Job<NormalMail>) {
+    this.onActive(job);
     try {
-      await this.mailerService.sendWelcomeEmail(
-        job.data.to,
-        job.data.userName,
-        job.data.verificationToken,
-      );
-      this.loggerService.logDebug(
-        'Send mail',
-        `[Job ${job.id}] Completed.`,
-        'result',
-      );
+      await this.authMailerService.sendWelcomeEmail({
+        to: job.data.to,
+        userName: job.data.userName,
+        verificationToken: job.data.verificationToken,
+      });
+      this.onCompleted(job, job.data);
     } catch (error) {
       this.onFailed(job, error);
       throw error; // Re-throw để Bull tự động thử lại theo cấu hình "attempts"
     }
   }
+
+
+
 
   @OnQueueActive()
   onActive(job: Job) {

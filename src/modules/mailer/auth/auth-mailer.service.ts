@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { MailerService as BaseMailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@app/common/services/logger.service';
+import { NormalMail } from './interfaces/normal-mail.interface';
 
 @Injectable()
-export class MailerService {
+export class AuthMailerService {
   constructor(
     private readonly mailerService: BaseMailerService,
     private readonly configService: ConfigService,
@@ -16,11 +17,7 @@ export class MailerService {
   private contact_link = '';
   private privacy_policy_link = '';
 
-  async sendWelcomeEmail(
-    to: string,
-    userName: string,
-    verificationToken: string,
-  ) {
+  async sendWelcomeEmail({ to, userName, verificationToken }: NormalMail) {
     await this.mailerService.sendMail({
       to,
       subject: 'Welcome to Bookstore!',
@@ -31,6 +28,41 @@ export class MailerService {
       },
     });
   }
+
+  async sendResetPasswordEmail({
+    to,
+    userName,
+    verificationToken,
+  }: NormalMail) {
+    const resetUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/reset-password/${verificationToken}`;
+    await this.mailerService.sendMail({
+      to,
+      subject: 'Reset your password at Bookstore',
+      template: 'reset-password',
+      context: {
+        resetUrl: resetUrl,
+      },
+    });
+  }
+
+  async resendVerificationEmail({
+    to,
+    userName,
+    verificationToken,
+  }: NormalMail): Promise<void> {
+    const verificationLink = `${this.configService.get<string>('FRONTEND_URL')}/auth/verify-email/${verificationToken}`;
+    await this.sendMail({
+      to: to,
+      subject: 'Xác minh tài khoản của bạn',
+      template: 'resend-token',
+      context: {
+        userEmail: to,
+        userName: userName,
+        verificationLink: verificationLink,
+      },
+    });
+  }
+
   async sendMail(options: MailOptions): Promise<void> {
     try {
       await this.mailerService.sendMail({
@@ -59,5 +91,4 @@ export class MailerService {
       throw error;
     }
   }
-
 }

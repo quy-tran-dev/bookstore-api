@@ -1,13 +1,15 @@
-import { MailerModule } from '@nestjs-modules/mailer';
+import { MailerModule as BaseMailerModule } from '@nestjs-modules/mailer';
 import { Module } from '@nestjs/common';
 import { MailerService } from './mail.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import * as path from 'path';
+import { LoggerService } from '@app/common/services/logger.service';
+import { AuthMailModule } from './auth/auth-mailer.module';
 
 @Module({
   imports: [
-    MailerModule.forRootAsync({
+    BaseMailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
@@ -23,6 +25,10 @@ import * as path from 'path';
         defaults: {
           from: `"${configService.get<string>('MAIL_FROM')}" <${configService.get<string>('MAIL_USER')}>`,
         },
+        tls: {
+          rejectUnauthorized:
+            configService.get<string>('NODE_ENV') === 'production', // Tắt kiểm tra chứng chỉ nếu bạn dùng localhost hoặc dev server
+        },
         template: {
           dir: path.join(__dirname, 'templates'),
           adapter: new HandlebarsAdapter(),
@@ -32,8 +38,9 @@ import * as path from 'path';
         },
       }),
     }),
+    AuthMailModule,
   ],
-  providers: [MailerService],
+  providers: [MailerService, LoggerService],
   exports: [MailerService],
 })
 export class MailModule {}

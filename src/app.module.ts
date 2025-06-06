@@ -7,6 +7,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { typeOrmConfig } from './common/configs/typeorm.config';
 import { ApiModule } from './apis/api.module';
 import { AppService } from './app.service';
+import { QueueModule } from './modules/queue/queue.module';
 
 @Module({
   imports: [
@@ -24,7 +25,8 @@ import { AppService } from './app.service';
         limit: 10,
       },
     ]),
-    ApiModule
+    ApiModule,
+    QueueModule,
   ],
   controllers: [AppController],
   providers,
