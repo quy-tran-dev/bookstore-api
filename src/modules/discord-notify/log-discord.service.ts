@@ -5,9 +5,17 @@ import { DateFormatUtil } from 'src/common/utils/date-format.util';
 
 @Injectable()
 export class DiscordLogService {
-  private webhookUrl: string;
+  private webhookUrlLog: string;
+  private webhookUrlUpdate: string;
+  private webhookUrlOrder: string;
   constructor(configService: ConfigService) {
-    this.webhookUrl = configService.get('DISCORD_WEBHOOK_URL') as string;
+    this.webhookUrlLog = configService.get('DISCORD_WEBHOOK_URL_LOG') as string;
+    this.webhookUrlUpdate = configService.get(
+      'DISCORD_WEBHOOK_URL_UPDATE',
+    ) as string;
+    this.webhookUrlOrder = configService.get(
+      'DISCORD_WEBHOOK_URL_ORDER',
+    ) as string;
   }
 
   async sendLog(
@@ -20,7 +28,9 @@ export class DiscordLogService {
     const maxTitleLength = 256;
 
     const safeMessage = message.substring(0, maxDescriptionLength);
-    const safeContext = context ? context.substring(0, maxTitleLength - level.length - 3) : ''; // -3 cho ' - '
+    const safeContext = context
+      ? context.substring(0, maxTitleLength - level.length - 3)
+      : ''; // -3 cho ' - '
 
     const timestamp = DateFormatUtil.formatDate(new Date());
 
@@ -34,16 +44,89 @@ export class DiscordLogService {
     };
 
     try {
-      // Thêm console.log để kiểm tra payload trước khi gửi
-      console.log('Sending Discord embed:', JSON.stringify({ embeds: [embed] }, null, 2));
-      await axios.post(this.webhookUrl, {
+      await axios.post(this.webhookUrlLog, {
         embeds: [embed],
       });
       console.log('Discord log sent successfully.');
     } catch (error) {
       console.error('Failed to send Discord log:', error.message);
       if (axios.isAxiosError(error) && error.response) {
-        // Log phản hồi từ Discord để debug chi tiết hơn
+        console.error('Discord API response error:', error.response.data);
+      }
+    }
+  }
+
+  async sendNewUpdate(
+    level: 'INFO' | 'WARN' | 'ERROR',
+    message: string,
+    context?: string,
+  ) {
+    // Cắt ngắn message và context nếu quá dài
+    const maxDescriptionLength = 2048;
+    const maxTitleLength = 256;
+
+    const safeMessage = message.substring(0, maxDescriptionLength);
+    const safeContext = context
+      ? context.substring(0, maxTitleLength - level.length - 3)
+      : ''; // -3 cho ' - '
+
+    const timestamp = DateFormatUtil.formatDate(new Date());
+
+    const embed = {
+      title: `${level} ${safeContext ? `- ${safeContext}` : ''}`,
+      description: safeMessage,
+      color: this.getColor(level),
+      footer: {
+        text: timestamp,
+      },
+    };
+
+    try {
+      await axios.post(this.webhookUrlUpdate, {
+        embeds: [embed],
+      });
+      console.log('Discord log sent successfully.');
+    } catch (error) {
+      console.error('Failed to send Discord log:', error.message);
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Discord API response error:', error.response.data);
+      }
+    }
+  }
+
+  async sendOrder(
+    level: 'INFO' | 'WARN' | 'ERROR',
+    message: string,
+    context?: string,
+  ) {
+    // Cắt ngắn message và context nếu quá dài
+    const maxDescriptionLength = 2048;
+    const maxTitleLength = 256;
+
+    const safeMessage = message.substring(0, maxDescriptionLength);
+    const safeContext = context
+      ? context.substring(0, maxTitleLength - level.length - 3)
+      : ''; // -3 cho ' - '
+
+    const timestamp = DateFormatUtil.formatDate(new Date());
+
+    const embed = {
+      title: `${level} ${safeContext ? `- ${safeContext}` : ''}`,
+      description: safeMessage,
+      color: this.getColor(level),
+      footer: {
+        text: timestamp,
+      },
+    };
+
+    try {
+      await axios.post(this.webhookUrlOrder, {
+        embeds: [embed],
+      });
+      console.log('Discord log sent successfully.');
+    } catch (error) {
+      console.error('Failed to send Discord log:', error.message);
+      if (axios.isAxiosError(error) && error.response) {
         console.error('Discord API response error:', error.response.data);
       }
     }
@@ -52,13 +135,13 @@ export class DiscordLogService {
   private getColor(level: string): number {
     switch (level) {
       case 'INFO':
-        return 3447003; // blue
+        return 3447003;
       case 'WARN':
-        return 16776960; // yellow
+        return 16776960;
       case 'ERROR':
-        return 16711680; // red
+        return 16711680;
       default:
-        return 8421504; // gray
+        return 8421504;
     }
   }
 }

@@ -9,7 +9,7 @@ import { useSwagger } from './app.swagger';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'debug', 'verbose'],
+     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
   const configService = app.get<ConfigService>(ConfigService);
   const port = configService.get<string>('PORT') || 3000;
