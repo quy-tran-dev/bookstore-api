@@ -6,17 +6,22 @@ import {
   HttpStatus,
   Get,
   Param,
+  UseGuards,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from '@app/common/guards/auth.guard';
+import { Request } from 'express';
 
-@Controller('auth') 
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @HttpCode(HttpStatus.CREATED) 
+  @HttpCode(HttpStatus.CREATED)
   async register(@Body() registerDto: RegisterDto) {
     const { user, accessToken } =
       await this.authService.registerUser(registerDto);
@@ -84,8 +89,58 @@ export class AuthController {
     };
   }
 
-  // Bạn có thể thêm các endpoint khác như:
-  // @Post('forgot-password')
-  // @Post('reset-password')
-  // @Get('profile') // Cần dùng Guard và Decorator để lấy thông tin người dùng từ JWT
+ 
+  @Post('reset-password/:token')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Param('token') token: string, @Body() password: string) {
+    await this.authService.resetPassword(token, password);
+    return {
+      message:
+        'Thay đổi mật khẩu thành công.',
+    };
+  }
+
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() email: string) {
+    await this.authService.forgotPassword(email);
+    return {
+      message:
+        'Vui lòng kiểm tra email.',
+    };
+  }
+
+   @Post('resend-token')
+  @HttpCode(HttpStatus.OK)
+  async resendToken(@Body() email: string) {
+    await this.authService.resendVerificationEmail(email);
+    return {
+      message:
+        'Vui lòng kiểm tra email.',
+    };
+  }
+
+  @UseGuards(JwtAuthGuard) // Áp dụng JwtAuthGuard cho route này
+  @Get('profile')
+  @HttpCode(HttpStatus.OK)
+  async getProfile(@Req() req: Request) {
+    if (!req.user) {
+      throw new UnauthorizedException('Vui lòng đăng nhập.');
+    }
+    const { userDetail, ...user } = await this.authService.getProfile(
+      req.user.uuid,
+    );
+    return {
+      message: 'Lấy thông tin người dùng thành công.',
+      data: {
+        user: {
+          ...user,
+          userDetail: {
+            ...userDetail,
+          },
+        },
+      },
+    };
+  }
 }

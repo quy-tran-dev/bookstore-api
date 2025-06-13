@@ -19,7 +19,7 @@ export class AdminSeeder implements Seeder {
         account: 'admin@bookstore.com',
         password: hashedPassword,
         isLogin: false,
-        power: 'super_admin',
+        power: 0,
         cancelRole: false,
       });
 

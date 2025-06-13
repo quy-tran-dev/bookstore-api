@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -29,18 +30,12 @@ export class AuthService {
     private readonly authMailProducer: AuthMailProducer,
   ) {}
 
-  /**
-   * Đăng ký người dùng mới.
-   * @param registerDto DTO chứa thông tin đăng ký.
-   * @returns Đối tượng User đã đăng ký và token JWT.
-   */
   async registerUser(
     registerDto: RegisterDto,
   ): Promise<{ user: User; accessToken: string }> {
     const { passwordUser, recipientName, addressUser, phoneUser, ...userData } =
       registerDto;
 
-    // Kiểm tra email đã tồn tại chưa
     const existingUser = await this.userService.findByEmail(userData.emailUser);
     if (existingUser) {
       throw new BadRequestException('Email đã được đăng ký.');
@@ -65,48 +60,22 @@ export class AuthService {
         recipientName,
         addressUser,
         phoneUser,
-        userId: newUser.uuid, // Đảm bảo userId được gán
+        userId: newUser.uuid,
       });
     }
 
-    // Tạo JWT token
     const accessToken = await this.generateUserToken(newUser);
 
-    // Lưu ý: Trong một ứng dụng thực tế, bạn sẽ gửi email xác minh tại đây
-    // Ví dụ: await this.emailService.sendVerificationEmail(newUser.emailUser, verificationToken);
-    try {
-      this.authMailProducer.sendWelcomeEmail({
-        // <-- BỎ `await` ở đây
-        to: newUser.emailUser,
-        userName: newUser.nameUser,
-        verificationToken: verificationToken,
-      });
-      // Nếu bạn muốn log việc thêm job
-      this.loggerService.logDebug(
-        'AuthService',
-        `Email job for ${newUser.emailUser} added to queue.`,
-        'info',
-      );
-    } catch (e) {
-      this.loggerService.logDebug(
-        'AuthService',
-        `Failed to add email job to queue for ${newUser.emailUser}: ${e.message}`,
-        e.stack,
-      );
-      // Bạn có thể chọn cách xử lý ở đây:
-      // 1. Throw error (nhưng người dùng đã được tạo, vậy nên không lý tưởng).
-      // 2. Ghi log và tiếp tục (để người dùng vẫn nhận được phản hồi thành công, nhưng email có thể không gửi được).
-      // 3. Đánh dấu người dùng cần xác minh lại hoặc có cơ chế gửi lại email.
-      // Trong trường hợp này, chúng ta cứ ghi log và tiếp tục để không block request.
-    }
+    this.supportSendEmail(
+      'welcome',
+      newUser.emailUser,
+      newUser.nameUser,
+      verificationToken,
+    );
+
     return { user: newUser, accessToken };
   }
 
-  /**
-   * Đăng nhập người dùng.
-   * @param loginDto DTO chứa thông tin đăng nhập.
-   * @returns Đối tượng User đã đăng nhập và token JWT.
-   */
   async loginUser(
     loginDto: LoginDto,
   ): Promise<{ user: User; accessToken: string }> {
@@ -135,24 +104,16 @@ export class AuthService {
     return { user, accessToken };
   }
 
-  /**
-   * Đăng nhập admin.
-   * @param loginDto DTO chứa thông tin đăng nhập (sử dụng lại LoginDto cho đơn giản, hoặc tạo AdminLoginDto riêng).
-   * @returns Đối tượng Admin đã đăng nhập và token JWT.
-   */
   async loginAdmin(
     loginDto: LoginDto,
   ): Promise<{ admin: Admin; accessToken: string }> {
-    const admin = await this.adminService.findByAccount(loginDto.emailUser); // Sử dụng emailUser làm account cho admin login
+    const admin = await this.adminService.findByAccount(loginDto.emailUser);
 
     if (!admin) {
       throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ.');
     }
 
-    if (
-      
-      !(await bcrypt.compare(loginDto.passwordUser, admin.password))
-    ) {
+    if (!(await bcrypt.compare(loginDto.passwordUser, admin.password))) {
       throw new UnauthorizedException(
         'Thông tin đăng nhập admin không hợp lệ.',
       );
@@ -166,24 +127,14 @@ export class AuthService {
     return { admin, accessToken };
   }
 
-  /**
-   * Tạo JWT token cho người dùng.
-   * @param user Đối tượng User.
-   * @returns Chuỗi JWT token.
-   */
   private async generateUserToken(user: User): Promise<string> {
     const payload: JwtPayload = { userId: user.uuid, email: user.emailUser };
     return this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'), // Lấy secret từ ConfigService
-      expiresIn: '1h', // Thời gian hết hạn của token
+      secret: this.configService.get<string>('JWT_SECRET'),
+      expiresIn: '1h',
     });
   }
 
-  /**
-   * Tạo JWT token cho admin.
-   * @param admin Đối tượng Admin.
-   * @returns Chuỗi JWT token.
-   */
   private async generateAdminToken(admin: Admin): Promise<string> {
     const payload: JwtPayload = {
       userId: admin.uuid,
@@ -191,25 +142,18 @@ export class AuthService {
       role: admin.power,
     }; // Sử dụng adminId và account
     return this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'), // Lấy secret từ ConfigService
-      expiresIn: '1h', // Thời gian hết hạn của token
+      secret: this.configService.get<string>('JWT_SECRET'),
+      expiresIn: '1h',
     });
   }
 
-  /**
-   * Xác minh email người dùng.
-   * @param verificationToken Token xác minh.
-   * @returns Đối tượng User đã được xác minh.
-   */
   async verifyEmail(verificationToken: string): Promise<User> {
     const user = await this.userService.findOne({
       verificationToken: verificationToken,
     });
 
     if (!user) {
-      throw new BadRequestException(
-        'Token xác minh không hợp lệ hoặc đã hết hạn.',
-      );
+      throw new BadRequestException('Token xác minh không hợp lệ.');
     }
 
     if (user.isVerified) {
@@ -217,5 +161,114 @@ export class AuthService {
     }
 
     return this.userService.markUserAsVerified(user.uuid);
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.userService.findOne({
+      verificationToken: token,
+    });
+
+    if (!user) {
+      throw new BadRequestException('Token xác minh không hợp lệ.');
+    }
+
+    return this.userService.updateUser(user.uuid, {
+      newPassword: newPassword,
+      verificationToken: '',
+    });
+  }
+
+  async getProfile(userId: string): Promise<User> {
+    const user = await this.userService.findByUserId(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  }
+
+  async resendVerificationEmail(email: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new BadRequestException('Email không tồn tại');
+    }
+
+    const token = await this.userService.getOrCreateToken(user, uuidv4());
+
+    await this.supportSendEmail('resend', email, user.nameUser, token);
+
+    return;
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new BadRequestException('Email không tồn tại');
+    }
+
+    const token = await this.userService.getOrCreateToken(user, uuidv4());
+
+    await this.supportSendEmail('forgot', email, user.nameUser, token);
+
+    return;
+  }
+
+  async supportSendEmail(
+    dispatch: string,
+    email: string,
+    nameUser: string,
+    token: string,
+  ) {
+    try {
+      switch (dispatch) {
+        case 'welcome':
+          await this.authMailProducer.sendWelcomeEmail({
+            to: email,
+            userName: nameUser,
+            verificationToken: token,
+          });
+        case 'forgot':
+          await this.authMailProducer.sendForgotPasswordEmail({
+            to: email,
+            userName: nameUser,
+            verificationToken: token,
+          });
+          break;
+        case 'resend':
+          await this.authMailProducer.resendVerificationEmail({
+            to: email,
+            userName: nameUser,
+            verificationToken: token,
+          });
+          break;
+        case 'reset':
+          await this.authMailProducer.sendResetPasswordEmail({
+            to: email,
+            userName: nameUser,
+            verificationToken: token,
+          });
+          break;
+        default:
+          break;
+      }
+
+      this.loggerService.logDebug(
+        'AuthService',
+        `Email job for ${email} added to queue.`,
+        'info',
+      );
+    } catch (e) {
+      this.loggerService.logDebug(
+        'AuthService',
+        `Failed to add email job to queue for ${email}: ${e.message}`,
+        e.stack,
+      );
+      // Bạn có thể chọn cách xử lý ở đây:
+      // 1. Throw error (nhưng người dùng đã được tạo, vậy nên không lý tưởng).
+      // 2. Ghi log và tiếp tục (để người dùng vẫn nhận được phản hồi thành công, nhưng email có thể không gửi được).
+      // 3. Đánh dấu người dùng cần xác minh lại hoặc có cơ chế gửi lại email.
+      // Trong trường hợp này, chúng ta cứ ghi log và tiếp tục để không block request.
+    }
   }
 }

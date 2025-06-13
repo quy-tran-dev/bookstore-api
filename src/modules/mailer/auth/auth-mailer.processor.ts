@@ -34,6 +34,54 @@ export class AuthMailProcessor {
     }
   }
 
+  @Process('sendForgotPasswordEmail')
+  async handleForgotPasswordEmail(job: Job<NormalMail>) {
+    this.onActive(job);
+    try {
+      await this.authMailerService.sendForgotPasswordEmail({
+        to: job.data.to,
+        userName: job.data.userName,
+        verificationToken: job.data.verificationToken,
+      });
+      this.onCompleted(job, job.data);
+    } catch (error) {
+      this.onFailed(job, error);
+      throw error; // Re-throw để Bull tự động thuze lai theo cấu hình "attempts"
+    }
+  }
+
+  @Process('resendVerificationEmail')
+  async handleResendVerificationEmail(job: Job<NormalMail>) {
+    this.onActive(job);
+    try {
+      await this.authMailerService.resendVerificationEmail({
+        to: job.data.to,
+        userName: job.data.userName,
+        verificationToken: job.data.verificationToken,
+      });
+      this.onCompleted(job, job.data);
+    } catch (error) {
+      this.onFailed(job, error);
+      throw error; // Re-throw để Bull tự động thuze lai theo cấu hình "attempts"
+    }
+  }
+
+  @Process('sendResetPasswordEmail')
+  async handleSendResetPasswordEmail(job: Job<NormalMail>) {
+    this.onActive(job);
+    try {
+      await this.authMailerService.sendResetPasswordEmail({
+        to: job.data.to,
+        userName: job.data.userName,
+        verificationToken: job.data.verificationToken,
+      });
+      this.onCompleted(job, job.data);
+    } catch (error) {
+      this.onFailed(job, error);
+      throw error; // Re-throw để Bull tự động thuze lai theo cấu hình "attempts"
+    }
+  }
+
   @OnQueueActive()
   onActive(job: Job) {
     console.log('Send mail', `[Job ${job.id}] Active`, '');

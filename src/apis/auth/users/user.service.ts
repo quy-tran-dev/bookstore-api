@@ -41,7 +41,6 @@ export class UserService extends BaseService<User> {
       throw new BadRequestException('Email đã được đăng ký.');
     }
 
-
     const newUser = this.userRepository.create({
       ...userData,
       passwordUser: passwordUser,
@@ -84,6 +83,25 @@ export class UserService extends BaseService<User> {
   }
 
   /**
+   * Tạo hoặc cập nhật token xác minh cho người dùng.
+   * @param user Đối tượng User.
+   * @param tokenNew Token được tạo mới.
+   * @returns Token xác minh.
+   */
+  async getOrCreateToken(user: User, tokenNew: string): Promise<string> {
+    let token = tokenNew;
+    if (user.verificationToken) {
+      token = user.verificationToken;
+    } else {
+      await this.updateUser(user.uuid, {
+        verificationToken: token,
+      });
+    }
+
+    return token;
+  }
+
+  /**
    * Đánh dấu người dùng đã được xác minh.
    * @param userId ID của người dùng.
    * @returns Đối tượng User đã được cập nhật.
@@ -123,5 +141,8 @@ export class UserService extends BaseService<User> {
     return this.userDetailRepository.save(userDetail);
   }
 
-  
+  async findByUserId(userId: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { uuid: userId } });
+  }
+
 }

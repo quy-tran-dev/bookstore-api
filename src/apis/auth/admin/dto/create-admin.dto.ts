@@ -19,7 +19,7 @@ export class CreateAdminDto {
   isLogin: boolean;
 
   @IsString({ message: 'Quyền hạn phải là chuỗi.' })
-  power: string;
+  power: number;
 
   @IsBoolean({ message: 'Trạng thái hủy vai trò phải là boolean.' })
   cancelRole: boolean;

@@ -34,7 +34,7 @@ export class AuthMailerService {
     });
   }
 
-  async sendResetPasswordEmail({
+  async sendForgotPasswordEmail({
     to,
     userName,
     verificationToken,
@@ -64,6 +64,18 @@ export class AuthMailerService {
         userEmail: to,
         userName: userName,
         verificationLink: verificationLink,
+      },
+    });
+  }
+
+  async sendResetPasswordEmail ({ to, userName, verificationToken }: NormalMail) {
+    const resetUrl = `${this.configService.get<string>('FRONTEND_URL')}/auth/reset-password/${verificationToken}`;
+    await this.sendMail({
+      to,
+      subject: 'Reset your password at Bookstore',
+      template: 'reset-password.template.hbs',
+      context: {
+        resetUrl: resetUrl,
       },
     });
   }

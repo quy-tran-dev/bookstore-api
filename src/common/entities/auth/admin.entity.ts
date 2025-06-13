@@ -16,8 +16,8 @@ export class Admin extends BaseEntity {
   @Column({name: 'is_login', default: false })
   isLogin: boolean;
 
-  @Column({name: 'power', nullable: false }) 
-  power: string;
+  @Column({name: 'power', nullable: false, default: 0 }) 
+  power: number;
 
   @Column({ name: 'cancel_role',default: false })
   cancelRole: boolean;
