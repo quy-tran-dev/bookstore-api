@@ -64,12 +64,16 @@ export class UserService extends BaseService<User> {
   ): Promise<User> {
     const user = await this.findOne({ uuid: userId }); // Sử dụng findOne từ BaseService
 
-    if (updateUserDto.newPassword) {
-      user.passwordUser = await bcrypt.hash(updateUserDto.newPassword, 10);
-      delete updateUserDto.newPassword; // Xóa trường newPassword để không ghi đè trực tiếp
-    }
-
     Object.assign(user, updateUserDto);
+    return this.userRepository.save(user);
+  }
+
+  async saveUser(user: User): Promise<User> {
+    console.log(
+      'DEBUG: Value passed to userRepository.save:',
+      user.passwordUser,
+      user.isVerified,
+    );
     return this.userRepository.save(user);
   }
 
@@ -78,8 +82,8 @@ export class UserService extends BaseService<User> {
    * @param email Email của người dùng.
    * @returns Đối tượng User hoặc null nếu không tìm thấy.
    */
-  async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { emailUser: email } });
+  async findByEmail(emailUser: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { emailUser: emailUser } });
   }
 
   /**
@@ -144,5 +148,4 @@ export class UserService extends BaseService<User> {
   async findByUserId(userId: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { uuid: userId } });
   }
-
 }

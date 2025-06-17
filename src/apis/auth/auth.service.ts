@@ -44,15 +44,16 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(passwordUser, 10);
 
     // Tạo verification token
-    const verificationToken = uuidv4();
-
+    
     // Tạo người dùng mới
     const newUser = await this.userService.createUser({
       ...userData,
       passwordUser: hashedPassword,
       isVerified: false,
-      verificationToken: verificationToken,
+      verificationToken: '',
     });
+    const verificationToken = await this.generateUserToken(newUser);
+
 
     // Tạo user detail nếu có thông tin
     if (recipientName || addressUser || phoneUser) {
@@ -127,11 +128,32 @@ export class AuthService {
     return { admin, accessToken };
   }
 
-  private async generateUserToken(user: User): Promise<string> {
-    const payload: JwtPayload = { userId: user.uuid, email: user.emailUser };
+  private async generateUserToken(
+    user: User,
+    action?: string,
+  ): Promise<string> {
+    const payload: JwtPayload = {
+      userId: user.uuid,
+      email: user.emailUser,
+      role: -1,
+    };
+
+    let exp: string = '';
+    switch (action) {
+      case 'forgot':
+        exp = this.configService.get<string>('EXP_RESETPASSWORD') ?? '1h';
+        break;
+      case 'verify':
+        exp = this.configService.get<string>('EXP_VERIFICATION') ?? '1d';
+        break;
+      default:
+        exp = this.configService.get<string>('EXP_DEFAULT') ?? '1d';
+        break;
+    }
+
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: '1h',
+      expiresIn: exp,
     });
   }
 
@@ -143,15 +165,23 @@ export class AuthService {
     }; // Sử dụng adminId và account
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: '1h',
+      expiresIn: this.configService.get<string>('EXP_DEFAULT') ?? '1h',
     });
   }
 
   async verifyEmail(verificationToken: string): Promise<User> {
-    const user = await this.userService.findOne({
-      verificationToken: verificationToken,
-    });
+    let payload: any;
+    try {
+     payload = this.jwtService.verify(verificationToken, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+    } catch (e) {
+      throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn.');
+    }
 
+    const userUuid = payload.uuid;
+
+    const user = await this.userService.findOne({ uuid: userUuid });
     if (!user) {
       throw new BadRequestException('Token xác minh không hợp lệ.');
     }
@@ -160,22 +190,61 @@ export class AuthService {
       throw new BadRequestException('Tài khoản đã được xác minh trước đó.');
     }
 
+   
+
     return this.userService.markUserAsVerified(user.uuid);
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const user = await this.userService.findOne({
-      verificationToken: token,
-    });
-
-    if (!user) {
-      throw new BadRequestException('Token xác minh không hợp lệ.');
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+    } catch (e) {
+      throw new UnauthorizedException(
+        'Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.',
+      );
     }
 
-    return this.userService.updateUser(user.uuid, {
-      newPassword: newPassword,
-      verificationToken: '',
-    });
+    const userUuid = payload.uuid;
+
+    const user = await this.userService.findOne({ uuid: userUuid });
+    if (!user) {
+      throw new BadRequestException('Người dùng không tồn tại.');
+    }
+
+    if (!user.isVerified) {
+      console.log(
+        `Email cho user ${user.emailUser} đã được tự động xác minh sau khi đặt lại mật khẩu.`,
+      );
+      user.isVerified = true;
+      user.emailVerifiedAt = new Date();
+      user.verificationToken = '';
+    }
+
+    const saltRounds =
+      this.configService.get<number>('BCRYPT_SALT_ROUNDS') || 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    console.log(
+      'DEBUG: User state BEFORE calling userService.save:',
+      user.passwordUser,
+    );
+    user.passwordUser = hashedPassword;
+    console.log('mật khẩu đã hashed: ' + user.passwordUser);
+
+    // return this.userService.saveUser(user);
+    await this.userService.saveUser(user);
+
+    // 4. NGAY SAU KHI userService.save(user) hoàn tất
+    // (Lưu ý: để chắc chắn hơn, bạn có thể fetch lại user từ DB ngay đây và log nó)
+    const updatedUserFromDB = await this.userService.findOne({ uuid: userUuid });
+    console.log(
+      'DEBUG: User state AFTER saving and RE-FETCHING from DB:',
+      updatedUserFromDB.passwordUser,
+    );
+    return;
   }
 
   async getProfile(userId: string): Promise<User> {
@@ -186,18 +255,22 @@ export class AuthService {
     return user;
   }
 
-  async resendVerificationEmail(email: string) {
-    const user = await this.userService.findByEmail(email);
+  async resendVerificationEmail(emailUser: string) {
+    const user = await this.userService.findByEmail(emailUser);
 
     if (!user) {
       throw new BadRequestException('Email không tồn tại');
     }
 
-    const token = await this.userService.getOrCreateToken(user, uuidv4());
+    if (user.isVerified) {
+      throw new BadRequestException('Email đã được xác minh.');
+    }
 
-    await this.supportSendEmail('resend', email, user.nameUser, token);
+    const token = await this.generateUserToken(user, 'verify');
 
-    return;
+    await this.supportSendEmail('resend', emailUser, user.nameUser, token);
+
+    return token;
   }
 
   async forgotPassword(email: string) {
@@ -206,12 +279,15 @@ export class AuthService {
     if (!user) {
       throw new BadRequestException('Email không tồn tại');
     }
+    if (!user.isVerified) {
+      throw new BadRequestException('Email chưa được xác minh. ');
+    }
 
-    const token = await this.userService.getOrCreateToken(user, uuidv4());
+    const token = await this.generateUserToken(user, 'forgot');
 
     await this.supportSendEmail('forgot', email, user.nameUser, token);
 
-    return;
+    return token;
   }
 
   async supportSendEmail(
@@ -228,6 +304,7 @@ export class AuthService {
             userName: nameUser,
             verificationToken: token,
           });
+          break;
         case 'forgot':
           await this.authMailProducer.sendForgotPasswordEmail({
             to: email,

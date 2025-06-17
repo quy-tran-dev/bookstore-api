@@ -20,11 +20,11 @@ export class User extends BaseEntity {
     description: 'Mật khẩu người dùng (đã hash)',
     example: 'hashed_password_string',
   })
-  @Column({name: 'password_user', nullable: false })
+  @Column({ name: 'password_user', nullable: false })
   passwordUser: string;
 
   @ApiProperty({ description: 'Trạng thái xác minh tài khoản', example: false })
-  @Column({name: 'is_verified', default: false })
+  @Column({ name: 'is_verified', default: false })
   isVerified: boolean;
 
   @ApiProperty({
@@ -32,7 +32,7 @@ export class User extends BaseEntity {
     example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
     nullable: true,
   })
-  @Column({name: 'verification_token', nullable: true })
+  @Column({ name: 'verification_token', nullable: true })
   verificationToken?: string;
 
   @ApiProperty({
@@ -40,8 +40,15 @@ export class User extends BaseEntity {
     example: '2023-01-01T12:00:00Z',
     nullable: true,
   })
-  @Column({name: 'verification_verified_at', type: 'timestamp', nullable: true })
+  @Column({
+    name: 'verification_verified_at',
+    type: 'timestamp',
+    nullable: true,
+  })
   emailVerifiedAt: Date;
+
+  @Column({ name: 'role', type: 'int', default: -1 })
+  role: number;
 
   @ApiProperty({ description: 'Thông tin chi tiết người dùng' })
   @OneToMany(() => UserDetail, (userDetail) => userDetail.user, {

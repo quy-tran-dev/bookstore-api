@@ -1,4 +1,9 @@
 {
   "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*", // <-- Đảm bảo dòng này có hoặc tương tự
+    // Nếu bạn muốn chỉ định rõ hơn cho file d.ts
+    "src/common/types/express-request.d.ts" // <-- Có thể thêm dòng này nếu "src/**/*" không hiệu quả
+  ],
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
 }
